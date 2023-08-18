@@ -1,0 +1,27 @@
+﻿@using GriffinEstimator.Shared
+@if (Result != null && Result.Estimates.Any())
+{
+    <div class="row">
+    @foreach (var estimate in Result.Estimates)
+    {
+        <div class="col-sm-3 mt-2 mb-2">
+            <div class="card text-center">
+                <div class="card-header">
+                    @estimate.MemberName
+                </div>
+                <div class="card-body">
+                    <h3 class="card-title">@(ShowPoints ? estimate.Points : (estimate.Points != null ? "Ok" : ""))</h3>
+                </div>
+            </div>
+        </div>
+    }
+    </div>
+}
+
+@code {
+    [Parameter]
+    public EstimationResult Result { get; set; }
+
+    [Parameter]
+    public bool ShowPoints { get; set; }
+}

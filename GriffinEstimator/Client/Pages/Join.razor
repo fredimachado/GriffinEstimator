@@ -1,0 +1,150 @@
+﻿@page "/join/{SessionId}"
+@using GriffinEstimator.Shared;
+@using Microsoft.AspNetCore.SignalR.Client;
+@inject NavigationManager NavigationManager
+@inject BrowserStorage Storage
+@implements IAsyncDisposable
+
+<PageTitle>Griffin Estimator - Planning Poker</PageTitle>
+
+@if (!joined)
+{
+    <h1>Time to estimate!</h1>
+    <div>
+        <div class="col-3 mb-3">
+            <label for="inputName" class="form-label">Name</label>
+            <input type="text" class="form-control" id="inputName" @bind="name">
+        </div>
+        <button type="button" class="btn btn-primary btn-lg" @onclick="JoinSession">Join</button>
+    </div>
+}
+else
+{
+    <h1>Welcome @name!</h1>
+    <div>
+        @if (estimating && !estimationSent)
+        {
+            <div class="form-group">
+                <div class="col-3 mb-3">
+                    <label for="inputPoints" class="form-label">Points</label>
+                    <select class="form-select form-select-lg" id="inputPoints" @bind="points">
+                        <option selected></option>
+                        <option value="0">0</option>
+                        <option value="1">1</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                        <option value="5">5</option>
+                        <option value="8">8</option>
+                        <option value="13">13</option>
+                        <option value="20">20</option>
+                    </select>
+                </div>
+                <button type="button" class="btn btn-primary btn-lg" @onclick="SubmitEstimate">Ok</button>
+            </div>
+        }
+        else if (estimating && estimationSent)
+        {
+            <div class="alert alert-success" role="alert">
+                Waiting for the round to end...
+            </div>
+        }
+        else if (!estimating && result != null)
+        {
+            <ResultsTable Result="result" ShowPoints="true" />
+        }
+        else
+        {
+            <div class="alert alert-secondary" role="alert">
+                Waiting for the round to start...
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private HubConnection hubConnection;
+
+    private bool joined;
+    private string name;
+
+    private bool estimating;
+    private string points;
+    private EstimationResult result;
+    private bool estimationSent;
+
+    [Parameter]
+    public string SessionId { get; set; }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            var nameFromStorage = await Storage.GetAsync<string>("Name");
+            if (!string.IsNullOrWhiteSpace(nameFromStorage))
+            {
+                name = nameFromStorage;
+                StateHasChanged();
+            }
+        }
+
+        await base.OnAfterRenderAsync(firstRender);
+    }
+
+    private async Task JoinSession()
+    {
+        if (hubConnection != null && hubConnection.State != HubConnectionState.Disconnected)
+        {
+            return;
+        }
+
+        hubConnection = new HubConnectionBuilder()
+            .WithUrl(NavigationManager.ToAbsoluteUri("/pokerSessionHub"))
+            .WithAutomaticReconnect(new RetryForeverPolicy())
+            .Build();
+
+        hubConnection.On("RoundStarted", () =>
+        {
+            this.result = null;
+            estimationSent = false;
+            estimating = true;
+            StateHasChanged();
+        });
+
+        hubConnection.On("RoundEnded", (EstimationResult result) =>
+        {
+            points = null;
+            estimating = false;
+            this.result = result;
+            StateHasChanged();
+        });
+
+        hubConnection.Closed += (exception) =>
+        {
+            NavigationManager.NavigateTo("/", forceLoad: true);
+            return Task.CompletedTask;
+        };
+
+        await hubConnection.StartAsync();
+
+        var sessionId = await hubConnection.InvokeAsync<string>("JoinSession", SessionId, name);
+
+        joined = true;
+        StateHasChanged();
+
+        await Storage.SetAsync("Name", name);
+    }
+
+    private async Task SubmitEstimate()
+    {
+        estimationSent = true;
+        await hubConnection.SendAsync("SubmitEstimate", SessionId, name, Convert.ToInt32(points));
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (hubConnection is not null)
+        {
+            await hubConnection.DisposeAsync();
+        }
+    }
+}
