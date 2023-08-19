@@ -1,0 +1,19 @@
+﻿@inject ClipboardService ClipboardService
+
+@if (Url != null)
+{
+    <div class="d-flex">
+        <div class="form-control me-2">@Url</div>
+        <button class="btn btn-outline-success" type="button" @onclick="CopyToClipboard">Copy</button>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public string Url { get; set; }
+
+    private Task CopyToClipboard()
+    {
+        return ClipboardService.CopyToClipboard(Url);
+    }
+}
