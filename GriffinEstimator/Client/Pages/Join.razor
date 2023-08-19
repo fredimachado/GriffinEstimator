@@ -3,6 +3,7 @@
 @using Microsoft.AspNetCore.SignalR.Client;
 @inject NavigationManager NavigationManager
 @inject BrowserStorage Storage
+@inject HttpClient Http
 @implements IAsyncDisposable
 
 <PageTitle>Griffin Estimator - Planning Poker</PageTitle>
@@ -91,6 +92,18 @@ else
     }
 
     private async Task JoinSession()
+    {
+        var response = await Http.PostAsJsonAsync("api/session/join", new { SessionId });
+        if (!response.IsSuccessStatusCode)
+        {
+            NavigationManager.NavigateTo("/", forceLoad: true);
+            return;
+        }
+
+        await JoinPokerSessionHub();
+    }
+
+    private async Task JoinPokerSessionHub()
     {
         if (hubConnection != null && hubConnection.State != HubConnectionState.Disconnected)
         {
