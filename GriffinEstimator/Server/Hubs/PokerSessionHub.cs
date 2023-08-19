@@ -1,19 +1,28 @@
-﻿using GriffinEstimator.Server.Session;
+﻿using GriffinEstimator.Server.Configuration;
+using GriffinEstimator.Server.Session;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.Options;
 
 namespace GriffinEstimator.Server.Hubs;
 
-public class PokerSessionHub : Hub<ITeamMember>
+public class PokerSessionHub : Hub<IPokerSession>
 {
     private readonly SessionManager _sessionManager;
+    private readonly IOptionsMonitor<GriffinEstimatorSettings> _options;
 
-    public PokerSessionHub(SessionManager sessionManager)
+    public PokerSessionHub(SessionManager sessionManager, IOptionsMonitor<GriffinEstimatorSettings> options)
     {
         _sessionManager = sessionManager;
+        _options = options;
     }
 
-    public async Task<string> StartSession()
+    public async Task<string> StartSession(string secretKey)
     {
+        if (secretKey != _options.CurrentValue.SecretKey)
+        {
+            return "error";
+        }
+
         var session = _sessionManager.CreateSession(Context.ConnectionId);
 
         await Groups.AddToGroupAsync(Context.ConnectionId, session.Id);
@@ -25,11 +34,17 @@ public class PokerSessionHub : Hub<ITeamMember>
     {
         await Groups.AddToGroupAsync(Context.ConnectionId, sessionId);
 
-        _sessionManager.GetSession(sessionId)
-                       .AddMember(new Member(memberName));
+        var session = _sessionManager.GetSession(sessionId);
+        session.AddMember(new Member(memberName));
 
         await Clients.Group(sessionId)
                      .MemberJoined(memberName);
+
+        if (session.CurrentState == SessionState.RoundInProgress)
+        {
+            await Clients.Caller
+                         .RoundStarted();
+        }
 
         return sessionId;
     }

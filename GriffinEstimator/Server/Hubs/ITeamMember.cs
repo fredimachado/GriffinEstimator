@@ -2,7 +2,7 @@
 
 namespace GriffinEstimator.Server.Hubs;
 
-public interface ITeamMember
+public interface IPokerSession
 {
     Task SessionStarted(string sessionId);
     Task MemberJoined(string memberName);

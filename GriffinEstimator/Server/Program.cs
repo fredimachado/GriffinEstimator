@@ -1,3 +1,4 @@
+using GriffinEstimator.Server.Configuration;
 using GriffinEstimator.Server.Hubs;
 using GriffinEstimator.Server.Session;
 using Microsoft.AspNetCore.ResponseCompression;
@@ -16,6 +17,9 @@ builder.Services.AddControllersWithViews();
 builder.Services.AddRazorPages();
 
 builder.Services.AddSingleton<SessionManager>();
+
+builder.Services.Configure<GriffinEstimatorSettings>(
+    builder.Configuration.GetSection(GriffinEstimatorSettings.SectionName));
 
 var app = builder.Build();
 

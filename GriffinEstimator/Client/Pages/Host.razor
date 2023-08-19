@@ -1,6 +1,7 @@
 ﻿@page "/host"
 @using GriffinEstimator.Shared
 @using Microsoft.AspNetCore.SignalR.Client
+@layout HostLayout
 @inject NavigationManager NavigationManager
 @implements IAsyncDisposable
 
@@ -8,7 +9,15 @@
 
 @if (hubConnection.State != HubConnectionState.Connected)
 {
-    <h1>Connecting...</h1>
+    <h1>Welcome!</h1>
+    <div>Please enter the secret key to create a session.</div>
+    <div>
+        <div class="col-3 mb-3">
+            <label for="inputName" class="form-label">Key</label>
+            <input type="password" class="form-control" id="inputName" @bind="secretKey">
+        </div>
+        <button type="button" class="btn btn-primary btn-lg" @onclick="Connect">Create Session</button>
+    </div>
 }
 else if (hubConnection.State == HubConnectionState.Connected && string.IsNullOrWhiteSpace(sessionId))
 {
@@ -16,7 +25,6 @@ else if (hubConnection.State == HubConnectionState.Connected && string.IsNullOrW
 }
 else if (hubConnection.State == HubConnectionState.Connected && !string.IsNullOrWhiteSpace(sessionId))
 {
-    <div>Session link: @NavigationManager.ToAbsoluteUri($"/join/{sessionId}")</div>
     <div>
         @if (estimating)
         {
@@ -32,14 +40,21 @@ else if (hubConnection.State == HubConnectionState.Connected && !string.IsNullOr
     </div>
 }
 
+<div>@error</div>
+
 @code {
     private HubConnection hubConnection;
 
     private string sessionId;
+    private string secretKey;
+    private string error;
     private bool estimating;
     private EstimationResult result = new EstimationResult(new());
 
-    protected override async Task OnInitializedAsync()
+    [CascadingParameter]
+    private HostLayout Layout { get; set; }
+
+    protected override Task OnInitializedAsync()
     {
         hubConnection = new HubConnectionBuilder()
             .WithUrl(NavigationManager.ToAbsoluteUri("/pokerSessionHub"))
@@ -75,9 +90,29 @@ else if (hubConnection.State == HubConnectionState.Connected && !string.IsNullOr
             StateHasChanged();
         });
 
+        return Task.CompletedTask;
+    }
+
+    private async Task Connect()
+    {
+        if (string.IsNullOrWhiteSpace(secretKey))
+        {
+            return;
+        }
+
         await hubConnection.StartAsync();
 
-        sessionId = await hubConnection.InvokeAsync<string>("StartSession");
+        var result = await hubConnection.InvokeAsync<string>("StartSession", secretKey);
+
+        if (result != "error")
+        {
+            sessionId = result;
+            Layout.SetUri(@NavigationManager.ToAbsoluteUri($"/join/{sessionId}"));
+        }
+        else
+        {
+            error = result;
+        }
     }
 
     private async Task StartRound()
@@ -92,7 +127,12 @@ else if (hubConnection.State == HubConnectionState.Connected && !string.IsNullOr
 
     private async Task RestartRound()
     {
-        await StartRound();
+        if (result != null && result.Estimates.Any())
+        {
+            result.Estimates.ForEach(x => x.Points = null);
+        }
+        StateHasChanged();
+        await hubConnection.SendAsync("RestartRound", sessionId);
     }
 
     private async Task EndRound()

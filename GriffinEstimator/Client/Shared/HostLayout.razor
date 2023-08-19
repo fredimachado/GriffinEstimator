@@ -1,0 +1,29 @@
+﻿@inherits LayoutComponentBase
+
+<div class="page">
+    <main>
+        <div class="top-row px-4">
+            <nav class="navbar bg-body-tertiary">
+                <div class="container-fluid">
+                    <a class="navbar-brand">Host</a>
+                </div>
+            </nav>
+        </div>
+
+        <article class="content px-4">
+            <CascadingValue Value="this">
+                @Body
+            </CascadingValue>
+        </article>
+    </main>
+</div>
+
+@code {
+    private string url;
+
+    public void SetUri(Uri uri)
+    {
+        url = uri?.ToString();
+        StateHasChanged();
+    }
+}
