@@ -28,7 +28,7 @@ public class SessionController : ControllerBase
         {
             var session = _sessionManager.GetSession(request.SessionId);
 
-            _logger.LogInformation("Found session {sessionId} for Member {memberName}", session, request.MemberName);
+            _logger.LogInformation("Found session {sessionId} for Member {memberName}", request.SessionId, request.MemberName);
 
             return Ok(request.SessionId);
         }
