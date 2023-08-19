@@ -93,7 +93,12 @@ else
 
     private async Task JoinSession()
     {
-        var response = await Http.PostAsJsonAsync("api/session/join", new { SessionId });
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return;
+        }
+
+        var response = await Http.PostAsJsonAsync("api/session/join", new { SessionId, MemberName = name });
         if (!response.IsSuccessStatusCode)
         {
             NavigationManager.NavigateTo("/", forceLoad: true);
