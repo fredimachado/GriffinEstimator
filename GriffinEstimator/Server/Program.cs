@@ -44,6 +44,7 @@ app.UseStaticFiles();
 
 app.UseRouting();
 
+app.MapGet("/healthz", () => Results.Ok());
 
 app.MapRazorPages();
 app.MapControllers();
