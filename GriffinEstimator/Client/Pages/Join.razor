@@ -25,22 +25,38 @@ else
     <div>
         @if (estimating && !estimationSent)
         {
-            <div class="form-group">
-                <div class="col-3 mb-3">
-                    <label for="inputPoints" class="form-label">Points</label>
-                    <select class="form-select form-select-lg" id="inputPoints" @bind="points">
-                        <option selected></option>
-                        <option value="0">0</option>
-                        <option value="1">1</option>
-                        <option value="2">2</option>
-                        <option value="3">3</option>
-                        <option value="5">5</option>
-                        <option value="8">8</option>
-                        <option value="13">13</option>
-                        <option value="20">20</option>
-                    </select>
+            var sequence = new[] { 0, 1, 2, 3, 5, 8, 13, 21 };
+            <div class="hand">
+
+                <ul class="cards-container">
+
+
+                    @for (int i = 0; i < sequence.Length; i++)
+                    {
+                        var number = sequence[i];
+                        var pct = 100 - (8 * i);
+                        <li class="poker-card-container" style="right: calc(@(pct)% - 10em)" @onclick="() => SetPoints(number)">
+                            <div class="poker-card">
+                                <div>
+                                    <h3 class="h5 m-2">@number</h3>
+                                </div>
+                                <div class="text-center">
+                                    <h3 class="h1 mt-4">@number</h3>
+                                </div>
+                            </div>
+                        </li>
+                    }
+        
+                </ul>
+
+                <div class="form-group submit-box">
+                    <button type="button" disabled="@isDisabled" class="btn btn-primary btn-lg" @onclick="SubmitEstimate">Submit</button>
+                    @if (!isDisabled)
+                    {
+                        <h4>Selected card: @points</h4>
+                    }
                 </div>
-                <button type="button" class="btn btn-primary btn-lg" @onclick="SubmitEstimate">Ok</button>
+        
             </div>
         }
         else if (estimating && estimationSent)
@@ -70,6 +86,7 @@ else
 
     private bool estimating;
     private string points;
+    private bool isDisabled;
     private EstimationResult result;
     private bool estimationSent;
 
@@ -89,6 +106,12 @@ else
         }
 
         await base.OnAfterRenderAsync(firstRender);
+    }
+
+    private void SetPoints(int points)
+    {
+        this.points = points.ToString();
+        isDisabled = false;
     }
 
     private async Task JoinSession()
@@ -125,6 +148,7 @@ else
             this.result = null;
             estimationSent = false;
             estimating = true;
+            isDisabled = true;
             StateHasChanged();
         });
 
